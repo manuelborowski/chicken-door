@@ -3,10 +3,7 @@
   import Accordion from "../shared/Accordion.svelte";
   import { v4 as uuidv4 } from "uuid";
   import { onMount } from "svelte";
-  import { io } from "socket.io-client";
-
-
-  const socket = io();
+  import  sio from "../scripts/socketio"
 
   let fields = { sun_set_rise_url: "" };
   let valid = false;
@@ -31,7 +28,7 @@
       } else {
         console.log("Error", res.status, res.statusText);
       }
-      socket.emit('sio','Hi over there');
+      sio.socket.emit('sio','Hi over there');
     } catch (error) {
       console.log("Error:", error);
     }
@@ -44,18 +41,6 @@
 
     fields.sun_set_rise_url = settings.sun_set_rise_url;
 
-    socket.on('connect', () => {
-      console.log('client connected');
-      setTimeout(() => {
-        console.log('need to send something');
-        socket.send("Hallo daar");
-        socket.emit("test", "Hallo daar");
-
-      }, 3000);
-      socket.on("message", d => {
-        console.log('Hallo in client', d);
-      });
-    });
   });
 </script>
 

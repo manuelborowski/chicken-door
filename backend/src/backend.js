@@ -2,12 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import data from './data.js';
+import control from './control.js';
 import http from 'http';
 import { Server } from 'socket.io';
+import logger from './logger.js';
 
 var app = express()
 const server = http.Server(app);
-const io = new Server(server);
 app.use(cors())
 
 app.use(express.static('public'));
@@ -15,10 +16,14 @@ app.use(express.json())
 
 const io = new Server(server);
 io.on('connect', (socket) => {
-  console.log('server connected');
-  socket.emit('main', {door: 'open'});
+  control.init_socketio(socket);
+  socket.on('disconnect', (socket) => {
+    control.deinit_socketio(socket);
+  });
 });
 
+
+logger.info('Starting chicken door');
 
 function error(status, msg) {
   var err = new Error(msg);

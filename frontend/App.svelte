@@ -12,10 +12,15 @@
 	//tabs
 	let items = [ti_main, ti_settings];
 	let active_item = ti_main;
+	let hide_ti_main = 'hidden';
+	let hide_ti_settings = 'hidden';
 
 
-	const tab_change = e => active_item = e.detail;
-
+	const tab_change = e => {
+		active_item = e.detail
+		hide_ti_main = active_item !== ti_main ? 'hidden' : 'test';
+		hide_ti_settings = active_item !== ti_settings ? 'hidden' : 'test';
+	};
 	</script>
 
 <svelte:head>
@@ -24,12 +29,23 @@
 
 <Header />
 <main>
+
 	<Tabs {active_item} {items} on:tab_change={tab_change}/>
-	{#if active_item === ti_main}
+
+	<!-- <div hidden={active_item !== ti_main}>
 	<Main/>
-	{:else}
+</div>
+<div hidden={active_item !== ti_settings}>
 	<SettingsForm/>
-	{/if}
+</div> -->
+
+{#if active_item === ti_main}
+<Main/>
+{:else}
+<SettingsForm/>
+{/if}
+
+
 </main>
 <Footer />
 <style>
