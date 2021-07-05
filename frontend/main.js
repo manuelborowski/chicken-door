@@ -1,9 +1,11 @@
 import App from './App.svelte';
 
+// V0.1: first version
+
 const app = new App({
 	target: document.body,
 	props: {
-		name: 'world'
+		version: 'V0.1'
 	}
 });
 

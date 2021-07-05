@@ -10,20 +10,21 @@ import logger from './logger.js';
 var app = express()
 const server = http.Server(app);
 app.use(cors())
-
 app.use(express.static('public'));
 app.use(express.json())
 
+
 const io = new Server(server);
 io.on('connect', (socket) => {
-  control.init_socketio(socket);
-  socket.on('disconnect', (socket) => {
-    control.deinit_socketio(socket);
+  control.socket.init(socket);
+  socket.on('disconnect', () => {
+    control.socket.deinit();
   });
 });
 
 
 logger.info('Starting chicken door');
+
 
 function error(status, msg) {
   var err = new Error(msg);
@@ -35,6 +36,7 @@ function error(status, msg) {
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
+
 
 app.use('/api', function (req, res, next) {
   var key = req.query['api-key'];
@@ -50,22 +52,21 @@ app.use('/api', function (req, res, next) {
   next();
 });
 
-// map of valid api keys, typically mapped to
-// account info with some sort of database like redis.
-// api keys do _not_ serve as authentication, merely to
-// track API usage or help prevent malicious behavior etc.
 var apiKeys = ['foo', 'bar', 'baz'];
+
 
 app.get('/api/settings', function (req, res, next) {
   let settings = data.settings.get_all();
   res.json(settings);
 });
 
+
 app.get('/api/settings/:key', function (req, res, next) {
   const key = req.params.key;
   let value = data.settings.get(key);
   res.json(value);
 });
+
 
 app.put('/api/settings', function (req, res, next) {
   try {
@@ -76,6 +77,7 @@ app.put('/api/settings', function (req, res, next) {
     res.json({ status: false, data: e });
   }
 });
+
 
 app.put('/api/settings/:key/:value', function (req, res, next) {
   try {
@@ -89,9 +91,16 @@ app.put('/api/settings/:key/:value', function (req, res, next) {
   }
 });
 
-app.get('/products/:id', function (req, res, next) {
-  res.json({ msg: 'This is CORS-enabled for all origins!' })
-})
+
+app.put('/api/test', function (req, res, next) {
+  try {
+    let result = control.test.execute(req.body);
+    res.json(result);
+  }
+  catch (e) {
+    res.json({ status: false, data: e.message });
+  }
+});
 
 server.listen(80, function () {
   console.log('CORS-enabled web server listening on port 80')
