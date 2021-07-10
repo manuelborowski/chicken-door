@@ -8,19 +8,20 @@ import { Server } from 'socket.io';
 import logger from './logger.js';
 
 var app = express()
-const server = http.Server(app);
 app.use(cors())
 app.use(express.static('public'));
 app.use(express.json())
 
 
+const server = http.Server(app);
 const io = new Server(server);
-io.on('connect', (socket) => {
-  control.socket.init(socket);
-  socket.on('disconnect', () => {
-    control.socket.deinit();
-  });
+
+let socket;
+io.on('connect', (s) => {
+  socket = s;
+  control.init(socket);
 });
+
 
 
 logger.info('Starting chicken door');
@@ -54,6 +55,11 @@ app.use('/api', function (req, res, next) {
 
 var apiKeys = ['foo', 'bar', 'baz'];
 
+const format_response  = (promise, res) => {
+  promise
+  .then(value => res.json({status: true, value}))
+  .catch(e => res.json({status: false, message: e.message}));
+}
 
 app.get('/api/settings', function (req, res, next) {
   let settings = data.settings.get_all();
@@ -63,8 +69,7 @@ app.get('/api/settings', function (req, res, next) {
 
 app.get('/api/settings/:key', function (req, res, next) {
   const key = req.params.key;
-  let value = data.settings.get(key);
-  res.json(value);
+  format_response(data.settings.get(key), res);
 });
 
 
@@ -102,6 +107,6 @@ app.put('/api/test', function (req, res, next) {
   }
 });
 
-server.listen(80, function () {
+server.listen(80, () => {
   console.log('CORS-enabled web server listening on port 80')
-})
+});

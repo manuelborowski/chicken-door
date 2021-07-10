@@ -1,83 +1,97 @@
 <script>
   import Button from "../shared/Button.svelte";
   import Accordion from "../shared/Accordion.svelte";
-  import { v4 as uuidv4 } from "uuid";
   import { onMount } from "svelte";
   import socket from "../scripts/socketio";
   import { config } from "../config.js";
 
-  let fields = { sun_set_rise_url: "" };
-  let valid = false;
-
-  const fetchType = {
-    SUBMIT: "submit",
-    SUNRISESET_TEST: "sunriseset-test",
+  let fields = {
+    latitude: "",
+    longitude: "",
   };
 
-  const fetch_handler = async (type) => {
+  let valid = false;
+  let sun_timing = { rise: "", set: "" };
+
+  const actionType = {
+    save_settings: {
+      endpoint: "settings",
+      body: fields,
+    },
+    get_sun_timings: {
+      endpoint: "test",
+      body: { topic: "sun-timing" },
+    },
+  };
+
+  const action_handler = async (action) => {
     try {
-      let url = undefined,
-        body = undefined,
-        method = undefined;
-      switch (type) {
-        case fetchType.SUBMIT:
-          method = "PUT",
-          url = "/api/settings";
-          body = JSON.stringify(fields);
-        case fetchType.SUNRISESET_TEST:
-          method = "PUT"
-          url = "/api/test";
-          body = JSON.stringify({ topic: "sunriseset" });
-      }
-      if (url) {
-        const res = await fetch(`${url}?api-key=${config.api_key}`, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body,
-        });
-        if (res.status === 200) {
-          const ret = await res.json();
-          if (ret.status) {
-            console.log("success", ret.data);
-          } else {
-            console.log("error", ret.data);
-          }
+      const res = await fetch(`\api\\${action.endpoint}?api-key=${config.api_key}`, {
+        method: 'PUT',
+        headers: { "Content-Type": "application/json" },
+        body: json(action.body),
+      });
+      if (res.status === 200) {
+        const ret = await res.json();
+        if (ret.status) {
+          console.log("success", ret.data);
         } else {
-          console.log("Error", res.status, res.statusText);
+          console.log("error", ret.data);
         }
+      } else {
+        console.log("Error", res.status, res.statusText);
       }
     } catch (error) {
       console.log("Error:", error);
     }
   };
 
-  const event_sun_rise_set = () => {
-    socket.emit("test", { event: "sun_rise_set" });
-  };
-
   onMount(async () => {
-    const res = await fetch("/api/settings?api-key=foo");
-    const settings = await res.json();
-    fields.sun_set_rise_url = settings.sun_set_rise_url;
+    const fetch_settings = await fetch("/api/settings/location-longitude?api-key=foo");
+    const data = await fetch_settings.json();
+    if (data.status) {
+      fields.longitude = data.value;
+    } else {
+      alert(data.message);
+    }
+  });
+
+  socket.on("sun-timing", (ret) => {
+    if (ret.status) {
+      sun_timing.rise = ret.data.sunrise;
+      sun_timing.set = ret.data.sunset;
+    }
   });
 </script>
 
 <Accordion>
   <span slot="head">Instellingen</span>
   <div slot="details">
-    <form on:submit|preventDefault={() => fetch_handler(fetchType.SUBMIT)}>
+    <form on:submit|preventDefault={() => action_handler(actionType.save_settings)}>
       <div class="form-field">
-        <label for="sun-set-rise">Sunset-sunrise URL:</label>
-        <input type="text" id="sun-set-rise" bind:value={fields.sun_set_rise_url} />
+        <label for="location-latitude">Latitude:</label>
+        <input type="text" id="location-latitude" bind:value={fields.latitude} />
+      </div>
+      <div class="form-field">
+        <label for="location-longitude">Longitude:</label>
+        <input type="text" id="location-longitude" bind:value={fields.longitude} />
       </div>
       <Button type="secondary">Save</Button>
     </form>
   </div>
 </Accordion>
 <Accordion>
-  <span slot="head">Test</span>
+  <span slot="head">Zonsopgang en ondergang</span>
   <div slot="details">
-    <Button on:click={() => fetch_handler(fetchType.SUNRISESET_TEST)}>Get sunrise and sunset</Button>
+    <div class="form-field">
+      <label for="sun-rise">Zonsopgang:</label>
+      <input type="text" id="sun-rise" bind:value={sun_timing.rise} />
+    </div>
+    <div class="form-field">
+      <label for="sun-set">Zonsondergang:</label>
+      <input type="text" id="sun-set" bind:value={sun_timing.set} />
+    </div>
+    <Button on:click={() => action_handler(actionType.get_sun_timings)}>Get sunrise and sunset</Button>
   </div>
 </Accordion>
 

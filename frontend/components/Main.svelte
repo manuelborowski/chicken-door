@@ -16,19 +16,19 @@
   }
 
   onMount(() => {
-    socket.on("main", door_state_event);
+    socket.on("door", door_state_event);
   });
 
   onDestroy(() => {
-    socket.off("main", door_state_event);
+    socket.off("door", door_state_event);
   });
 </script>
 
 <div>
   <img src={door_state === doorState.OPEN ? "img/door open.png" : "img/door closed.png"} alt="" />
   <div>
-  <Button type='secondary' on:click="{() => socket.emit('main', {door: doorState.CLOSED})}">Deur sluiten</Button>
-  <Button on:click="{() => socket.emit('main', {door: doorState.OPEN})}">Deur openen</Button>
+  <Button type='secondary' on:click="{() => socket.emit('door', {door: doorState.CLOSED})}">Deur sluiten</Button>
+  <Button on:click="{() => socket.emit('door', {door: doorState.OPEN})}">Deur openen</Button>
 </div>
 </div>
 

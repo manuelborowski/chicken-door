@@ -7,48 +7,49 @@ const doorState = {
   CLOSED: 'closed'
 };
 
-class Socketio {
-  init(socket) {
-    this.socket = socket;
-    this.socket.on("main", d => {
-      console.log("door is ", d.door);
-      logger.info(`Door is going to state: ${d.door}`);
-      this.socket.emit("main", d);
-    });
-  }
-
-  deinit() { }
-}
-
 
 class Test {
-  constructor(control) {
+  constructor(control, socket) {
     this.control = control;
+    this.socket = socket;
   }
 
   execute(data) {
     switch (data.topic) {
-      case "sunriseset":
-        console.log("executing sun rise and set test");
-        this.control.get_sun_timing().then(ret => console.log(ret);
-        return ret;
-    }
+      case "sun-timing":
+        this.control.get_sun_timing().then(ret => {
+          // ret = { status: true, data: { sunrise: 'op', sunset: 'onder' } };
+
+          console.log('get_sun_timing returns: ', ret);
+          this.socket.emit('sun-timing', ret);
+        }).catch(e => console.log(e.message));
+        return { status: true, data: '' }
+    };
   }
 }
 
 
 class Control {
   door_state = doorState.OPEN;
+  init(socket) {
+    this.test = new Test(this, socket);
+    this.socket = socket;
 
-  constructor() {
-    this.socket = new Socketio();
-    this.test = new Test(this);
+    socket.on("door", d => {
+      console.log("door is ", d.door);
+      logger.info(`Door is going to state: ${d.door}`);
+      socket.emit("door", d);
+    });
   }
 
-  async get_sun_timing() {
-    const get_public_ip = await fetch('https://api.ipify.org?format=json')
-    if (get_public_ip.status === 200) {
-      const decode_public_ip = await get_public_ip.json();
+  get_sun_timing = async () => {
+    console.log('before public ip');
+    // const get_public_ip = await fetch('https://api.ipify.org?format=json')
+    console.log('after public ip');
+    // if (get_public_ip.status === 200) {
+    if (true) {
+      // let decode_public_ip = await get_public_ip.json();
+      let decode_public_ip = '84.199.90.82'
       console.log('public ip is ', decode_public_ip);
       const get_location = await fetch(`https://geocode.xyz?locate=${decode_public_ip.ip}&geoit=JSON`);
       if (get_location.status === 200) {
@@ -60,8 +61,15 @@ class Control {
           console.log('sunset and sunrise', decode_sun_timing.results.sunset, decode_sun_timing.results.sunrise);
           const sunset = new Date(decode_sun_timing.results.sunset);
           const sunrise = new Date(decode_sun_timing.results.sunrise);
-          let ret = {status: true, data: {sunrise: sunrise.toTimeString(), sunset: sunset.toTimeString()}};
+          let ret = { status: true, data: { sunrise: sunrise.toTimeString(), sunset: sunset.toTimeString() } };
+          const event = await this.socket.emit('sun-timing', ret);
           return ret;
+          // const decode_sun_timing = await get_sun_timing.json();
+          // console.log('sunset and sunrise', decode_sun_timing.results.sunset, decode_sun_timing.results.sunrise);
+          // const sunset = new Date(decode_sun_timing.results.sunset);
+          // const sunrise = new Date(decode_sun_timing.results.sunrise);
+          // let ret = { status: true, data: { sunrise: sunrise.toTimeString(), sunset: sunset.toTimeString() } };
+          // return ret;
 
           // const get_utc_offset = await fetch(`https://timezone.abstractapi.com/v1/current_time/?api_key=${config.abstractapi_key}&location=${decode_location.latt},${decode_location.longt}`);
           // if (get_utc_offset.status === 200) {
@@ -71,6 +79,7 @@ class Control {
         }
       }
     }
+    return {status: false}
   }
 }
 
