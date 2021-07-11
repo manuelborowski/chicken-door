@@ -16,16 +16,8 @@ app.use(express.json())
 const server = http.Server(app);
 const io = new Server(server);
 
-let socket;
-io.on('connect', (s) => {
-  socket = s;
-  control.init(socket);
-});
-
-
 
 logger.info('Starting chicken door');
-
 
 function error(status, msg) {
   var err = new Error(msg);
@@ -33,11 +25,9 @@ function error(status, msg) {
   return err;
 }
 
-
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
-
 
 app.use('/api', function (req, res, next) {
   var key = req.query['api-key'];
@@ -55,10 +45,10 @@ app.use('/api', function (req, res, next) {
 
 var apiKeys = ['foo', 'bar', 'baz'];
 
-const format_response  = (promise, res) => {
+const format_response = (promise, res) => {
   promise
-  .then(value => res.json({status: true, value}))
-  .catch(e => res.json({status: false, message: e.message}));
+    .then(value => res.json({ status: true, value }))
+    .catch(e => res.json({ status: false, message: e.message }));
 }
 
 app.get('/api/settings', function (req, res, next) {
@@ -85,15 +75,9 @@ app.put('/api/settings', function (req, res, next) {
 
 
 app.put('/api/settings/:key/:value', function (req, res, next) {
-  try {
-    const key = req.params.key;
-    const value = req.params.value;
-    data.settings.put(key, value);
-    res.json(true);
-  }
-  catch (e) {
-    res.json({ status: false, data: e });
-  }
+  const key = req.params.key;
+  const value = req.params.value;
+  format_response(data.settings.put(key, value), res);
 });
 
 
@@ -107,6 +91,16 @@ app.put('/api/test', function (req, res, next) {
   }
 });
 
-server.listen(80, () => {
-  console.log('CORS-enabled web server listening on port 80')
-});
+data.settings.init()
+  .then(res => {
+    server.listen(80, () => {
+      console.log('CORS-enabled web server listening on port 80')
+    });
+  })
+  .then(res => {
+    io.on('connect', (socket) => {
+      control.use(socket);
+    });
+  });
+
+

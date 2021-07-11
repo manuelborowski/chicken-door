@@ -9,8 +9,13 @@ const doorState = {
 
 
 class Test {
-  constructor(control, socket) {
+  constructor(control) {
     this.control = control;
+    console.log("creating a new class Test")
+  }
+
+  use(socket) {
+    this.io = socket.server;
     this.socket = socket;
   }
 
@@ -21,25 +26,28 @@ class Test {
           // ret = { status: true, data: { sunrise: 'op', sunset: 'onder' } };
 
           console.log('get_sun_timing returns: ', ret);
-          this.socket.emit('sun-timing', ret);
+          this.io.emit('sun-timing', ret);
         }).catch(e => console.log(e.message));
         return { status: true, data: '' }
     };
   }
 }
 
-
 class Control {
   door_state = doorState.OPEN;
-  init(socket) {
-    this.test = new Test(this, socket);
+  constructor() {
+    this.test = new Test(this);
+  }
+  use(socket) {
+    console.log('push io')
+    this.io = socket.server;
     this.socket = socket;
-
     socket.on("door", d => {
       console.log("door is ", d.door);
       logger.info(`Door is going to state: ${d.door}`);
-      socket.emit("door", d);
+      this.io.emit("door", d); // broadcast to all clients
     });
+    this.test.use(socket);
   }
 
   get_sun_timing = async () => {

@@ -8,7 +8,7 @@ class Socket {
       Socket.instance = this;
       this.socket = io();
       this.socket.on('connect', () => {
-        console.log('Client is connected');
+        console.log('Client is connected', this.socket.id);
       });
     }
     return Socket.instance;
