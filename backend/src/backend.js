@@ -91,16 +91,9 @@ app.put('/api/test', function (req, res, next) {
   }
 });
 
-data.settings.init()
-  .then(res => {
-    server.listen(80, () => {
-      console.log('CORS-enabled web server listening on port 80')
-    });
-  })
-  .then(res => {
-    io.on('connect', (socket) => {
-      control.use(socket);
-    });
-  });
+data.init()
+  .then(res => server.listen(80, () => logger.info('CORS-enabled web server listening on port 80')))
+  .then(res => io.on('connect', (socket) => control.init(socket)))
+  .catch(e => {logger.error(`Program abort, error: ${e.message}`)});
 
 

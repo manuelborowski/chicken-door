@@ -11,7 +11,6 @@ const doorState = {
 class Test {
   constructor(control) {
     this.control = control;
-    console.log("creating a new class Test")
   }
 
   use(socket) {
@@ -38,7 +37,7 @@ class Control {
   constructor() {
     this.test = new Test(this);
   }
-  use(socket) {
+  init(socket) {
     console.log('push io')
     this.io = socket.server;
     this.socket = socket;
