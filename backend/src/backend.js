@@ -52,27 +52,17 @@ const format_response = (promise, res) => {
 }
 
 app.get('/api/settings', function (req, res, next) {
-  let settings = data.settings.get_all();
-  res.json(settings);
+  format_response(data.settings.get_all(), res);
 });
-
 
 app.get('/api/settings/:key', function (req, res, next) {
   const key = req.params.key;
   format_response(data.settings.get(key), res);
 });
 
-
-app.put('/api/settings', function (req, res, next) {
-  try {
-    data.settings.put_all(req.body, true);
-    res.json({ status: true, data: '' });
-  }
-  catch (e) {
-    res.json({ status: false, data: e });
-  }
+app.put('/api/batch/settings', function (req, res, next) {
+  format_response(data.settings.update_all(req.body), res);
 });
-
 
 app.put('/api/settings/:key/:value', function (req, res, next) {
   const key = req.params.key;
@@ -80,20 +70,13 @@ app.put('/api/settings/:key/:value', function (req, res, next) {
   format_response(data.settings.put(key, value), res);
 });
 
-
 app.put('/api/test', function (req, res, next) {
-  try {
-    let result = control.test.execute(req.body);
-    res.json(result);
-  }
-  catch (e) {
-    res.json({ status: false, data: e.message });
-  }
+  format_response(control.test.execute(req.body), res);
 });
 
 data.init()
   .then(res => server.listen(80, () => logger.info('CORS-enabled web server listening on port 80')))
   .then(res => io.on('connect', (socket) => control.init(socket)))
-  .catch(e => {logger.error(`Program abort, error: ${e.message}`)});
+  .catch(e => { logger.error(`Program abort, error: ${e.message}`) });
 
 

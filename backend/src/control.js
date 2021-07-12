@@ -1,6 +1,6 @@
 import logger from './logger.js';
 import fetch from 'node-fetch';
-import { config } from "../config.js"
+import data from './data.js';
 
 const doorState = {
   OPEN: 'open',
@@ -13,21 +13,15 @@ class Test {
     this.control = control;
   }
 
-  use(socket) {
+  init(socket) {
     this.io = socket.server;
     this.socket = socket;
   }
 
-  execute(data) {
+  async execute(data) {
     switch (data.topic) {
       case "sun-timing":
-        this.control.get_sun_timing().then(ret => {
-          // ret = { status: true, data: { sunrise: 'op', sunset: 'onder' } };
-
-          console.log('get_sun_timing returns: ', ret);
-          this.io.emit('sun-timing', ret);
-        }).catch(e => console.log(e.message));
-        return { status: true, data: '' }
+        return this.control.get_sun_timing()
     };
   }
 }
@@ -35,10 +29,14 @@ class Test {
 class Control {
   door_state = doorState.OPEN;
   constructor() {
-    this.test = new Test(this);
+    if (!Control.instance) {
+      this.test = new Test(this);
+      Control.instance = this;
+    }
+    return Control.instance;
   }
+
   init(socket) {
-    console.log('push io')
     this.io = socket.server;
     this.socket = socket;
     socket.on("door", d => {
@@ -46,48 +44,26 @@ class Control {
       logger.info(`Door is going to state: ${d.door}`);
       this.io.emit("door", d); // broadcast to all clients
     });
-    this.test.use(socket);
+    this.test.init(socket);
   }
 
   get_sun_timing = async () => {
-    console.log('before public ip');
-    // const get_public_ip = await fetch('https://api.ipify.org?format=json')
-    console.log('after public ip');
-    // if (get_public_ip.status === 200) {
-    if (true) {
-      // let decode_public_ip = await get_public_ip.json();
-      let decode_public_ip = '84.199.90.82'
-      console.log('public ip is ', decode_public_ip);
-      const get_location = await fetch(`https://geocode.xyz?locate=${decode_public_ip.ip}&geoit=JSON`);
-      if (get_location.status === 200) {
-        const decode_location = await get_location.json();
-        console.log('location', decode_location.latt, decode_location.longt);
-        const get_sun_timing = await fetch(`https://api.sunrise-sunset.org/json?lat=${decode_location.latt}&lng=${decode_location.longt}&formatted=0`);
-        if (get_sun_timing.status === 200) {
-          const decode_sun_timing = await get_sun_timing.json();
-          console.log('sunset and sunrise', decode_sun_timing.results.sunset, decode_sun_timing.results.sunrise);
-          const sunset = new Date(decode_sun_timing.results.sunset);
-          const sunrise = new Date(decode_sun_timing.results.sunrise);
-          let ret = { status: true, data: { sunrise: sunrise.toTimeString(), sunset: sunset.toTimeString() } };
-          const event = await this.socket.emit('sun-timing', ret);
-          return ret;
-          // const decode_sun_timing = await get_sun_timing.json();
-          // console.log('sunset and sunrise', decode_sun_timing.results.sunset, decode_sun_timing.results.sunrise);
-          // const sunset = new Date(decode_sun_timing.results.sunset);
-          // const sunrise = new Date(decode_sun_timing.results.sunrise);
-          // let ret = { status: true, data: { sunrise: sunrise.toTimeString(), sunset: sunset.toTimeString() } };
-          // return ret;
-
-          // const get_utc_offset = await fetch(`https://timezone.abstractapi.com/v1/current_time/?api_key=${config.abstractapi_key}&location=${decode_location.latt},${decode_location.longt}`);
-          // if (get_utc_offset.status === 200) {
-          //   const decode_utc_offset = await get_utc_offset.json();
-          //   console.log('UCT offset is ', decode_utc_offset.gmt_offset);
-          // }
-        }
-      }
+    const longitude = await data.settings.get('location-longitude');
+    const latitude = await data.settings.get('location-latitude');
+    const get_sun_timing = await fetch(`https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&formatted=0`);
+    if (get_sun_timing.status === 200) {
+      const decode_sun_timing = await get_sun_timing.json();
+      const sunset = new Date(decode_sun_timing.results.sunset);
+      const sunrise = new Date(decode_sun_timing.results.sunrise);
+      logger.info('sunset and sunrise', sunset, sunrise);
+      let ret = { status: true, data: { sunrise: sunrise.toTimeString(), sunset: sunset.toTimeString() }};
+      const event = await this.io.emit('sun-timing', ret);
+      return true;
+    } else {
+      throw new Error(`fetch from api.sunrise-sunset.org returned: ${get_sun_timing.status} ${get_sun_timing.statusText}`);
     }
-    return {status: false}
   }
 }
 
-export default new Control();
+const control = new Control;
+export default control;

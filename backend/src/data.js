@@ -1,6 +1,7 @@
 import MongoClient from 'mongodb';
 import logger from './logger.js';
 import { default_settings } from '../config.js';
+import { raw } from 'express';
 
 class Settings {
   constructor() {
@@ -12,25 +13,24 @@ class Settings {
     return setting.value;
   }
 
-  get_all() {
-    let settings = {};
-    this.settings.forEach(s => settings[s.key] = s.value);
+  async get_all() {
+    const raw_settings = await this.setting_collection.find({key: {$in: Object.keys(default_settings)}}).toArray();
+    const settings = Object.fromEntries(raw_settings.map(e => [e.key, e.value]));
     return settings;
   }
 
   async update(key, value) {
     if (!(key in default_settings)) { throw new Error(`'${key}' is not a valid setting`); }
-    const query = { key };
-    const doc = { value };
-    await this.setting_collection.updateOne({ key }, { value });
+    const ret = await this.setting_collection.updateOne({ key }, {$set: { value }});
     logger.info(`updated setting key: ${key}, value: ${value}`);
     return true;
   }
 
-  put_all(settings, strict = false) {
+  async update_all(settings) {
     for (const [key, value] of Object.entries(settings)) {
-      this.update(key, value, strict);
+      this.update(key, value);
     }
+    return true;
   }
 
   async init() {
@@ -52,7 +52,11 @@ class Settings {
 
 class Data {
   constructor() {
-    this.settings = new Settings();
+    if (!Data.instance) {
+      this.settings = new Settings();
+      Data.instance = this;
+    }
+    return Data.instance;
   }
 
   async init() {
@@ -60,4 +64,5 @@ class Data {
   }
 }
 
-export default new Data();
+const data = new Data;
+export default data;
