@@ -48,8 +48,8 @@ class Control {
   }
 
   get_sun_timing = async () => {
-    const longitude = await data.settings.get('location-longitude');
-    const latitude = await data.settings.get('location-latitude');
+    const longitude = await data.settings.get('location_longitude');
+    const latitude = await data.settings.get('location_latitude');
     const get_sun_timing = await fetch(`https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&formatted=0`);
     if (get_sun_timing.status === 200) {
       const decode_sun_timing = await get_sun_timing.json();

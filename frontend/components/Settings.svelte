@@ -6,68 +6,28 @@
   import { config } from "../config.js";
 
   let setting_fields = {
-    latitude: "",
-    longitude: "",
+    location_latitude: "",
+    location_longitude: "",
   };
+
 
   let valid = false;
   let sun_timing = { rise: "", set: "" };
 
-  const actionType = {
-    save_settings: {
-      endpoint: "settings",
-      body: setting_fields,
-    },
-    get_sun_timings: {
-      endpoint: "test",
-      body: { topic: "sun-timing" },
-    },
-  };
-
-  const action_handler = async (action) => {
-    try {
-      const res = await fetch(`\api\\${action.endpoint}?api-key=${config.api_key}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: json(action.body),
-      });
-      if (res.status === 200) {
-        const ret = await res.json();
-        if (ret.status) {
-          console.log("success", ret.data);
-        } else {
-          console.log("error", ret.data);
-        }
-      } else {
-        console.log("Error", res.status, res.statusText);
-      }
-    } catch (error) {
-      console.log("Error:", error);
-    }
-  };
-
-  const decode_response = async response => {
+  const decode_response = async (response) => {
     if (response.status === 200) {
       const ret = await response.json();
-      if (ret.status) {
-        return ret.value;
-      } else {
-        alert(ret.message);
-      }
-    } else {
-      alert(`Error: ${res.status} ${res.statusText}`);
-    }
+      if (ret.status) {return ret.value;
+      } else {alert(ret.message);}
+    } else {alert(`Error: ${res.status} ${res.statusText}`);}
     return false;
-  }
+  };
 
   const save_settings = async () => {
     const res = await fetch(`/api/batch/settings?api-key=${config.api_key}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        "location-longitude": setting_fields.longitude,
-        "location-latitude": setting_fields.latitude
-      }),
+      body: JSON.stringify(setting_fields),
     });
     const value = await decode_response(res);
     console.log(value);
@@ -89,8 +49,7 @@
     const fetch_settings = await fetch("/api/settings?api-key=foo");
     const data = await fetch_settings.json();
     if (data.status) {
-      setting_fields.longitude = data.value["location-longitude"];
-      setting_fields.latitude = data.value["location-latitude"];
+      Object.assign(setting_fields, data.value);
     } else {
       alert(data.message);
     }
@@ -112,11 +71,11 @@
     <form on:submit|preventDefault={save_settings}>
       <div class="form-field">
         <label for="location-latitude">Latitude:</label>
-        <input type="text" id="location-latitude" bind:value={setting_fields.latitude} />
+        <input type="text" id="location-latitude" bind:value={setting_fields.location_latitude} />
       </div>
       <div class="form-field">
         <label for="location-longitude">Longitude:</label>
-        <input type="text" id="location-longitude" bind:value={setting_fields.longitude} />
+        <input type="text" id="location-longitude" bind:value={setting_fields.location_longitude} />
       </div>
       <Button type="secondary">Save</Button>
     </form>
