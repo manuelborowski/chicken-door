@@ -51,25 +51,19 @@ class Control {
     data.settings.get("update_cron_pattern")
       .then(pattern => {
         this.update_job = cron.schedule(pattern, this.update_function);
-        // this.update_job = new CronJob(pattern, this.update_function);
-        // this.update_job.start();
       });
   }
 
   update_setting_cb = (key, value, opaque) => {
     try {
-    console.log("setting update", key, value);
-    this.update_job.stop()
-    this.update_job = cron.schedule(value, this.update_function)
-    } catch (e) {console.log('erorr: ', e.message);}
-    // const time = CronTime(value);
-    // this.update_job.setTime(time)
-    // .then(r => console.log('result is ', r))
-    // .catch(e => console.log('error is ', e.message));
+      this.update_job.stop()
+      this.update_job = cron.schedule(value, this.update_function)
+    } catch (e) { console.log('erorr: ', e.message); }
   }
 
-  update_function() {
+  update_function = () => {
     console.log('called on ', new Date());
+    this.get_sun_timing();
   }
 
   get_sun_timing = async () => {
