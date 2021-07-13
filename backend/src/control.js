@@ -1,6 +1,7 @@
 import logger from './logger.js';
 import fetch from 'node-fetch';
 import data from './data.js';
+import cron from 'node-cron';
 
 const doorState = {
   OPEN: 'open',
@@ -45,6 +46,30 @@ class Control {
       this.io.emit("door", d); // broadcast to all clients
     });
     this.test.init(socket);
+
+    data.settings.subscribe_on_update("update_cron_pattern", this.update_setting_cb, null);
+    data.settings.get("update_cron_pattern")
+      .then(pattern => {
+        this.update_job = cron.schedule(pattern, this.update_function);
+        // this.update_job = new CronJob(pattern, this.update_function);
+        // this.update_job.start();
+      });
+  }
+
+  update_setting_cb = (key, value, opaque) => {
+    try {
+    console.log("setting update", key, value);
+    this.update_job.stop()
+    this.update_job = cron.schedule(value, this.update_function)
+    } catch (e) {console.log('erorr: ', e.message);}
+    // const time = CronTime(value);
+    // this.update_job.setTime(time)
+    // .then(r => console.log('result is ', r))
+    // .catch(e => console.log('error is ', e.message));
+  }
+
+  update_function() {
+    console.log('called on ', new Date());
   }
 
   get_sun_timing = async () => {
@@ -56,7 +81,7 @@ class Control {
       const sunset = new Date(decode_sun_timing.results.sunset);
       const sunrise = new Date(decode_sun_timing.results.sunrise);
       logger.info('sunset and sunrise', sunset, sunrise);
-      let ret = { status: true, data: { sunrise: sunrise.toTimeString(), sunset: sunset.toTimeString() }};
+      let ret = { status: true, data: { sunrise: sunrise.toTimeString(), sunset: sunset.toTimeString() } };
       const event = await this.io.emit('sun-timing', ret);
       return true;
     } else {

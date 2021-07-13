@@ -3,6 +3,7 @@ export const config = {
 }
 
 export const default_settings = {
-  'location_latitude': '50.83540',
-  'location_longitude': '4.34453',
+  location_latitude: '50.83540',
+  location_longitude: '4.34453',
+  update_cron_pattern: '0 1 * * *', //every night at 01.00
 }

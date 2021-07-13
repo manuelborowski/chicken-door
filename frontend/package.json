@@ -24,6 +24,7 @@
     "sirv-cli": "^1.0.0",
     "socket.io": "^4.1.2",
     "socket.io-client": "^4.1.2",
+    "svelte-notifications": "^0.9.91",
     "uuid": "^8.3.2"
   }
 }

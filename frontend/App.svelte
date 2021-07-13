@@ -5,6 +5,7 @@
 	import Main from "./components/Main.svelte";
 	import Settings from "./components/Settings.svelte";
 	import Tabs from "./shared/Tabs.svelte";
+	import Notifications from 'svelte-notifications';
 
 	const ti_main = "Overzicht";
 	const ti_settings = "Instellingen";
@@ -29,12 +30,14 @@
 
 <Header />
 <main>
+	<Notifications>
 	<Tabs {active_item} {items} on:tab_change={tab_change} />
 	{#if active_item === ti_main}
 		<Main />
 	{:else}
 		<Settings />
 	{/if}
+</Notifications>
 </main>
 <Footer {version}/>
 

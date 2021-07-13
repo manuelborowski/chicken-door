@@ -1,10 +1,13 @@
 import MongoClient from 'mongodb';
 import logger from './logger.js';
 import { default_settings } from '../config.js';
-import { raw } from 'express';
 
 class Settings {
   constructor() {
+  }
+  update_callbacks = [];
+  subscribe_on_update(key, cb, opaque) {
+    this.update_callbacks.push([key, cb, opaque]);
   }
 
   async get(key) {
@@ -23,6 +26,7 @@ class Settings {
     if (!(key in default_settings)) { throw new Error(`'${key}' is not a valid setting`); }
     const ret = await this.setting_collection.updateOne({ key }, {$set: { value }});
     logger.info(`updated setting key: ${key}, value: ${value}`);
+    this.update_callbacks.forEach(([k, cb, opaque]) => {if (k == key) cb(key, value, opaque)});
     return true;
   }
 
