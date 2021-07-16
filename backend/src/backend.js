@@ -70,7 +70,10 @@ app.put('/api/test', function (req, res, next) {
 
 data.init()
   .then(res => server.listen(80, () => logger.info('CORS-enabled web server listening on port 80')))
-  .then(res => io.on('connect', (socket) => control.init(socket)))
+  .then(res => {
+    control.init(io);
+    io.on('connect', socket => control.use_socket(socket));
+  })
   .catch(e => { logger.error(`Program abort, error: ${e.message}`) });
 
 

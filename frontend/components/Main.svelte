@@ -1,22 +1,29 @@
 <script>
   import { onMount, onDestroy } from "svelte";
-  import Button from '../shared/Button.svelte';
+  import Button from "../shared/Button.svelte";
   import socket from "../scripts/socketio";
 
-  const doorState = {
+  const doorEvent = {
     OPEN: "open",
+    OPENING: "opening",
     CLOSED: "closed",
+    CLOSING: "closing",
+    ERROR: "error",
+    GET_STATE: "get_state",
   };
 
-  let door_state = doorState.CLOSED;
+  let door_state = doorEvent.CLOSED;
+  let show_door_open;
+  $: show_door_open = door_state === doorEvent.OPEN || door_state === doorEvent.CLOSING;
 
-  function door_state_event(d) {
-    door_state = d.door === "open" ? doorState.OPEN : doorState.CLOSED;
-    console.log("door state", d, door_state);
+  function door_state_event(event) {
+    door_state = event;
+    console.log("MAIN SVELTE: door state", event, door_state);
   }
 
   onMount(() => {
     socket.on("door", door_state_event);
+    socket.emit("door", doorEvent.GET_STATE)
   });
 
   onDestroy(() => {
@@ -25,11 +32,26 @@
 </script>
 
 <div>
-  <img src={door_state === doorState.OPEN ? "img/door open.png" : "img/door closed.png"} alt="" />
+  <img src={ show_door_open ? "img/door open.png" : "img/door closed.png"} alt="" />
   <div>
-  <Button type='secondary' on:click="{() => socket.emit('door', {door: doorState.CLOSED})}">Deur sluiten</Button>
-  <Button on:click="{() => socket.emit('door', {door: doorState.OPEN})}">Deur openen</Button>
-</div>
+    <Button type="secondary" on:click={() => socket.emit("door", doorEvent.CLOSING )}>Deur sluiten</Button>
+    <Button on:click={() => socket.emit("door", doorEvent.OPENING)}>Deur openen</Button>
+  </div>
+  {#if door_state === doorEvent.OPENING}
+    <div class="message">
+      <h1>Deur gaat open</h1>
+    </div>
+  {/if}
+  {#if door_state === doorEvent.CLOSING}
+    <div class="message">
+      <h1>Deur sluit</h1>
+    </div>
+  {/if}
+  {#if door_state === doorEvent.ERROR}
+    <div class="message">
+      <h1>Fout!</h1>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -46,5 +68,11 @@
     margin-left: auto;
     margin-right: auto;
     height: 200px;
+  }
+
+  .message {
+    border-style: groove;
+    border-radius: 20px;
+    padding: 20px;
   }
 </style>

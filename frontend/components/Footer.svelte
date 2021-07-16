@@ -2,7 +2,7 @@
   export let version;
 </script>
 <footer>
-  <div class="copyright">{version} Copyright 2021 Poll Ninja</div>
+  <div class="copyright">{version} Copyright 2021 MB</div>
 </footer>
 
 <style>

@@ -4,39 +4,41 @@
   import { onMount } from "svelte";
   import socket from "../scripts/socketio";
   import { config } from "../config.js";
-  import { getNotificationsContext } from 'svelte-notifications';
-import { text } from "svelte/internal";
+  import { getNotificationsContext } from "svelte-notifications";
+  import { text } from "svelte/internal";
   const { addNotification } = getNotificationsContext();
-  
 
   let setting_fields = {
     location_latitude: "",
     location_longitude: "",
     update_cron_pattern: "",
+    door_to: "",
   };
-
 
   let valid = false;
   let sun_timing = { rise: "", set: "" };
 
   const show_message = (text, type) => {
-    const config = {text, type, position: 'top-center'};
-    if (type === 'success') config.removeAfter = 1000;
+    const config = { text, type, position: "top-center" };
+    if (type === "success") config.removeAfter = 1000;
     addNotification(config);
-  }
+  };
 
   const decode_response = async (response) => {
     if (response.status === 200) {
       const ret = await response.json();
-      if (ret.status) {return ret.value;
-      } else {alert(ret.message);}
-    } else {alert(`Error: ${res.status} ${res.statusText}`);}
+      if (ret.status) {
+        return ret.value;
+      } else {
+        alert(ret.message);
+      }
+    } else {
+      alert(`Error: ${res.status} ${res.statusText}`);
+    }
     return false;
   };
 
   const save_settings = async () => {
-
-
     const res = await fetch(`/api/batch/settings?api-key=${config.api_key}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -45,9 +47,9 @@ import { text } from "svelte/internal";
     const value = await decode_response(res);
     console.log(value);
     if (value) {
-      show_message('Instellingen zijn bewaard', 'success');
+      show_message("Instellingen zijn bewaard", "success");
     } else {
-      show_message('Fout, instellingen zijn niet bewaard', 'danger');
+      show_message("Fout, instellingen zijn niet bewaard", "danger");
     }
   };
 
@@ -96,8 +98,14 @@ import { text } from "svelte/internal";
         <input type="text" id="location-longitude" bind:value={setting_fields.location_longitude} />
       </div>
       <div class="form-field">
-        <label for="update-cron-pattern">Cron patroon (regelmatig opvragen van zonsopgang en -ondergang tijdstippen):</label>
+        <label for="update-cron-pattern"
+          >Cron patroon (regelmatig opvragen van zonsopgang en -ondergang tijdstippen):</label
+        >
         <input type="text" id="update-cron-pattern" bind:value={setting_fields.update_cron_pattern} />
+      </div>
+      <div class="form-field">
+        <label for="door-to">Deur timeout (ms):</label>
+        <input type="text" id="door-to" bind:value={setting_fields.door_to} />
       </div>
       <Button type="secondary">Save</Button>
     </form>
