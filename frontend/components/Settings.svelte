@@ -53,12 +53,12 @@
     }
   };
 
-  const get_sun_timings = async () => {
+  const execute_test = async (test) => {
     const res = await fetch(`/api/test?api-key=${config.api_key}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        topic: "sun-timing",
+        topic: test,
       }),
     });
     const value = await decode_response(res);
@@ -112,7 +112,7 @@
   </div>
 </Accordion>
 <Accordion>
-  <span slot="head">Zonsopgang en ondergang</span>
+  <span slot="head">Test</span>
   <div slot="details">
     <div class="form-field">
       <label for="sun-rise">Zonsopgang:</label>
@@ -122,7 +122,8 @@
       <label for="sun-set">Zonsondergang:</label>
       <input type="text" id="sun-set" bind:value={sun_timing.set} />
     </div>
-    <Button on:click={get_sun_timings}>Get sunrise and sunset</Button>
+    <Button on:click={() => execute_test("sun-timing")}>Get sunrise and sunset</Button>
+    <Button on:click={() => execute_test("door-timeout")}>Test door open/close timeout</Button>
   </div>
 </Accordion>
 

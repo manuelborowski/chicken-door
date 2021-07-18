@@ -26,8 +26,11 @@ class Test {
   async execute(data) {
     switch (data.topic) {
       case "sun-timing":
-        return this.control.get_sun_timing()
+        return this.control.update_timings_and_delays();
+      case "door-timeout":
+        return this.control.set_door_timeout(true);
     };
+
   }
 }
 
@@ -101,27 +104,27 @@ class DoorFSM {
       {
         actions: {
           enter_open: (context, event) => {
-            console.log('FSM: entering open');
+            logger.info('FSM: entering open');
             clearTimeout(this.door_timer);
             this.out_is_open_cb(this.service.state.value);
           },
           enter_closing: (context, event) => {
-            console.log('FSM: entering closing');
+            logger.info('FSM: entering closing');
             data.settings.get('door_to').then(to => this.door_timer = setTimeout(() => this.service.send('TIMEOUT'), to));
             this.out_closing_cb(this.service.state.value);
           },
           enter_closed: (context, event) => {
-            console.log('FSM: entering closed');
+            logger.info('FSM: entering closed');
             clearTimeout(this.door_timer);
             this.out_is_closed_cb(this.service.state.value);
           },
           enter_opening: (context, event) => {
-            console.log('FSM: entering opening');
+            logger.info('FSM: entering opening');
             data.settings.get('door_to').then(to => this.door_timer = setTimeout(() => this.service.send('TIMEOUT'), to));
             this.out_opening_cb(this.service.state.value);
           },
           enter_error: (context, event) => {
-            console.log('FSM entering error');
+            logger.info('FSM entering error');
             this.out_error_cb(this.service.state.value);
           }
         }
@@ -129,31 +132,31 @@ class DoorFSM {
     );
   }
 
-  event_start_opening() {
+  event_start_opening = () => {
     this.service.send('START_OPENING');
   }
 
-  event_start_closing() {
+  event_start_closing = () => {
     this.service.send('START_CLOSING');
   }
 
-  event_is_open() {
+  event_is_open = () => {
     this.service.send('IS_OPEN');
   }
 
-  event_is_closed() {
+  event_is_closed = () => {
     this.service.send('IS_CLOSED');
   }
 
-  event_force_open() {
+  event_force_open = () => {
     this.service.send('FORCE_OPEN');
   }
 
-  event_force_close() {
+  event_force_close = ()  => {
     this.service.send('FORCE_CLOSE');
   }
 
-  get_current_state() { return this.service.state.value; }
+  get_current_state = () => this.service.state.value; 
 
   init(opening_cb, closing_cb, is_open_cb, is_closed_cb, error_cb) {
     this.out_opening_cb = opening_cb;
@@ -183,12 +186,12 @@ class Control {
     this.machine.init(this.out_opening_cb, this.out_closing_cb, this.out_is_open_cb, this.out_is_closed_cb, this.out_error_cb);
     data.settings.subscribe_on_update("update_cron_pattern", this.update_setting_cb, null);
     data.settings.get("update_cron_pattern")
-      .then(pattern => {this.update_job = cron.schedule(pattern, this.update_function);});
-    
+      .then(pattern => { this.update_job = cron.schedule(pattern, this.update_timings_and_delays); });
+
     if (Math.floor(Math.random() * 2) === 0) {
       console.log('start with door OPEN');
       this.machine.event_force_open();
-    }else {
+    } else {
       console.log('start with door CLOSED');
       this.machine.event_force_close();
     }
@@ -212,17 +215,17 @@ class Control {
       }
     });
     this.test.use_socket(socket);
-    this.update_function();
+    this.update_timings_and_delays();
   }
 
   update_setting_cb = (key, value, opaque) => {
     try {
       this.update_job.stop()
-      this.update_job = cron.schedule(value, this.update_function)
+      this.update_job = cron.schedule(value, this.update_timings_and_delays)
     } catch (e) { console.log('erorr: ', e.message); }
   }
 
-  update_function = () => {
+  update_timings_and_delays = () => {
     console.log('update_function called on ', new Date());
     this.get_sun_timing();
     this.set_door_timeout();
@@ -247,7 +250,7 @@ class Control {
     }
   }
 
-  set_door_timeout = async () => {
+  set_door_timeout = async (test = false) => {
     const now = new Date();
     const now_minutes = now.getHours() * 60 + now.getMinutes();
     let sun_setting = await data.settings.get('sun_rise');
@@ -258,16 +261,25 @@ class Control {
     let set_minutes = parseInt(sun_split[0]) * 60 + parseInt(sun_split[1]);
     rise_minutes = (now_minutes >= rise_minutes) ? rise_minutes + 24 * 60 : rise_minutes;
     set_minutes = (now_minutes >= set_minutes) ? set_minutes + 24 * 60 : set_minutes;
-    if(this.timer_door_open != null) {
+    if (this.timer_door_open != null) {
       clearTimeout(this.timer_door_open);
       this.timer_door_open = null;
     }
-    if(this.timer_door_close != null) {
+    if (this.timer_door_close != null) {
       clearTimeout(this.timer_door_close);
       this.timer_door_close = null;
     }
-    this.timer_door_open = setTimeout(() => this.machine.event_start_opening, (rise_minutes - now_minutes) * 60 * 1000);
-    this.timer_door_close = setTimeout(() => this.machine.event_start_closing, (set_minutes  - now_minutes) * 60 * 1000);
+    let sun_rise_delay, sun_set_delay;
+    if (test) {
+      sun_rise_delay = 5000;
+      sun_set_delay = 10000;
+    } else {
+      sun_rise_delay = (rise_minutes - now_minutes) * 60 * 1000;
+      sun_set_delay = (set_minutes - now_minutes) * 60 * 1000;
+    }
+    this.timer_door_open = setTimeout(this.machine.event_start_opening, sun_rise_delay);
+    this.timer_door_close = setTimeout(this.machine.event_start_closing, sun_set_delay);
+    console.log("sunrise delay: ", sun_rise_delay, "sunset delay: ", sun_set_delay);
   }
 
   out_opening_cb = state => {
