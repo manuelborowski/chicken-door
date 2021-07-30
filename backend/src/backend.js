@@ -2,25 +2,29 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import data from './data.js';
-import control from './control.js';
+import { Control } from './control.js';
 import http from 'http';
 import { Server } from 'socket.io';
 import logger from './logger.js';
+import minimist from 'minimist';
 
-var app = express()
+const app = express()
 app.use(cors())
 app.use(express.static('public'));
 app.use(express.json())
 
-
 const server = http.Server(app);
 const io = new Server(server);
 
+let argv = minimist(process.argv.slice(2));
+const dont_use_gpio =  ('nogpio' in argv);
+
+const control = new Control(dont_use_gpio);
 
 logger.info('Starting chicken door');
 
 function error(status, msg) {
-  var err = new Error(msg);
+  const err = new Error(msg);
   err.status = status;
   return err;
 }
@@ -30,14 +34,14 @@ app.get("/", (req, res) => {
 });
 
 app.use('/api', function (req, res, next) {
-  var key = req.query['api-key'];
+  const key = req.query['api-key'];
   if (!key) return next(error(400, 'api key required'));
   if (!~apiKeys.indexOf(key)) return next(error(401, 'invalid api key'));
   req.key = key;
   next();
 });
 
-var apiKeys = ['foo', 'bar', 'baz'];
+const apiKeys = ['foo', 'bar', 'baz'];
 
 const format_response = (promise, res) => {
   promise
@@ -69,11 +73,14 @@ app.put('/api/test', function (req, res, next) {
 });
 
 data.init()
-  .then(res => server.listen(80, () => logger.info('CORS-enabled web server listening on port 80')))
+  .then(res => server.listen(5000, () => logger.info('CORS-enabled web server listening on port 80')))
   .then(res => {
     control.init(io);
     io.on('connect', socket => control.use_socket(socket));
   })
-  .catch(e => { logger.error(`Program abort, error: ${e.message}`) });
+  .catch(e => {
+    logger.error(`Program abort, error: ${e.message}`);
+    console.log(`Program abort, error: ${e.message}\n${e.stack}`);
+  });
 
 

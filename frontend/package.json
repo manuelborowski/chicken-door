@@ -6,7 +6,8 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-    "start": "node ../backend/src/backend.js"
+    "start-remote": "node --inspect-brk=0.0.0.0 ../backend/src/backend.js ",
+    "start-local": "node ../backend/src/backend.js --nogpio"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^17.0.0",
