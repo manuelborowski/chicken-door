@@ -4,13 +4,19 @@ import data from './data.js';
 import cron from 'node-cron';
 import {createMachine, interpret} from 'xstate';
 import {Gpio} from 'onoff';
+import child_process from 'child_process';
 
-const doorEvents = {
+const doorState = {
     OPEN: "open",
     OPENING: "opening",
     CLOSED: "closed",
     CLOSING: "closing",
     ERROR: "error",
+    STOPPED: "stopped"
+}
+const frontEndEvent = {
+    BTN_OPEN: "btn_open",
+    BTN_CLOSE: "btn_close",
     GET_STATE: "get_state",
 };
 
@@ -44,6 +50,13 @@ class DoorTest {
 
     init = () => {
         this.control.machine.register_callback(this.out_action_cb, null)
+        if (Math.floor(Math.random() * 2) === 0) {
+            console.log('start with door OPEN');
+            this.machine.event_is_open();
+        } else {
+            console.log('start with door CLOSED');
+            this.machine.event_is_closed();
+        }
     }
 
     open_door = () => {
@@ -70,31 +83,52 @@ class DoorTest {
 }
 
 class DoorGpio {
-    out_motor_open = new Gpio(27, 'out');
-    out_motor_close = new Gpio(17, 'out');
-    out_motor_enable = new Gpio(22, 'out');
-    in_door_opened = new Gpio(23, 'in', 'rising', {debounceTime: 20});
-    in_door_closed = new Gpio(24, 'in', 'rising', {debounceTime: 20});
     door_delay = 4000;
 
     constructor(control) {
         this.control = control;
+        this.out_motor_open = new Gpio(27, 'out');
+        this.out_motor_close = new Gpio(17, 'out');
+        this.out_motor_enable = new Gpio(22, 'out');
+        this.in_door_opened = new Gpio(23, 'in', 'rising', {debounceTime: 20});
+        this.in_door_closed = new Gpio(24, 'in', 'rising', {debounceTime: 20});
+        this.in_open_door_btn = new Gpio(5, 'in', 'falling', {debounceTime: 20});
+        this.in_close_door_btn = new Gpio(6, 'in', 'falling', {debounceTime: 20});
     }
 
     init = () => {
+        child_process.spawn('gpio', ['-g', 'mode', '23', 'up']);
+        child_process.spawn('gpio', ['-g', 'mode', '24', 'up']);
+        child_process.spawn('gpio', ['-g', 'mode', '5', 'up']);
+        child_process.spawn('gpio', ['-g', 'mode', '6', 'up']);
         this.in_door_opened.watch((err, value) => {
+            console.log('DOOR GPIO: door is open');
             this.out_motor_close.writeSync(0);
             this.out_motor_open.writeSync(0);
             this.out_motor_enable.writeSync(0);
             this.control.machine.event_is_open();
         });
         this.in_door_closed.watch((err, value) => {
+            console.log('DOOR GPIO: door is closed');
             this.out_motor_close.writeSync(0);
             this.out_motor_open.writeSync(0);
             this.out_motor_enable.writeSync(0);
             this.control.machine.event_is_closed();
         });
-        this.control.machine.register_callback(this.out_action_cb, null)
+        this.in_open_door_btn.watch((err, value) => this.control.react_on_frontend_event(frontEndEvent.BTN_OPEN));
+        this.in_close_door_btn.watch((err, value) => this.control.react_on_frontend_event(frontEndEvent.BTN_CLOSE));
+        this.control.machine.register_callback(this.out_action_cb, null);
+        const door_is_open = this.in_door_opened.readSync();
+        const door_is_closed = this.in_door_closed.readSync();
+        if (door_is_open === 1) {
+            if (door_is_closed === 0) this.control.machine.event_is_open();
+        } else {
+            if (door_is_closed === 0) {
+                this.control.machine.event_is_stopped();
+            } else {
+                this.control.machine.event_is_closed();
+            }
+        }
     }
 
     open_door = () => {
@@ -111,14 +145,24 @@ class DoorGpio {
         this.out_motor_enable.writeSync(1);
     }
 
+    stop_door = () => {
+        console.log('DOOR GPIO: door is stopped');
+        this.out_motor_open.writeSync(0);
+        this.out_motor_close.writeSync(0);
+        this.out_motor_enable.writeSync(0);
+    }
+
     out_action_cb = (state, opaque) => {
-        console.log(`DOOR GPIO: statemachine goes to: ${state}`);
         switch (state) {
             case 'opening':
                 this.open_door();
                 break;
             case 'closing':
                 this.close_door();
+                break;
+            case 'stopped':
+            case 'error':
+                this.stop_door();
                 break;
         }
     }
@@ -131,77 +175,74 @@ class DoorFSM {
         this.control = control;
         this.machine = createMachine({
                 id: 'chicken-door',
-                initial: 'undefined',
+                initial: 'init',
                 states: {
-                    undefined: {
+                    init: {
                         on: {
-                            FORCE_OPEN: 'open',
-                            FORCE_CLOSE: 'closed',
+                            IS_STOPPED: 'stopped',
+                            IS_OPEN: 'open',
+                            IS_CLOSED: 'closed'
                         }
+                    },
+                    stopped: {
+                        on: {
+                            START_OPENING: 'opening',
+                            START_CLOSING: 'closing'
+                        },
+                        entry: ['clear_timer', 'invoke_state_callback']
                     },
                     open: {
                         on: {
                             START_CLOSING: 'closing',
                         },
-                        entry: ['enter_open',]
+                        entry: ['clear_timer', 'invoke_state_callback']
                     },
                     closing: {
                         on: {
                             START_OPENING: 'opening',
                             IS_CLOSED: 'closed',
+                            IS_STOPPED: 'stopped',
                             TIMEOUT: 'error',
                         },
-                        entry: ['enter_closing',]
+                        entry: ['start_timer', 'invoke_state_callback']
                     },
                     closed: {
                         on: {
                             START_OPENING: 'opening',
                         },
-                        entry: ['enter_closed',]
+                        entry: ['clear_timer', 'invoke_state_callback']
                     },
                     opening: {
                         on: {
                             START_CLOSING: 'closing',
                             IS_OPEN: 'open',
+                            IS_STOPPED: 'stopped',
                             TIMEOUT: 'error',
                         },
-                        entry: ['enter_opening']
+                        entry: ['start_timer', 'invoke_state_callback']
                     },
                     error: {
                         on: {
                             START_OPENING: 'opening',
                             START_CLOSING: 'closing',
                         },
-                        entry: ['enter_error',]
+                        entry: ['clear_timer', 'invoke_state_callback']
                     }
                 }
             },
             {
                 actions: {
-                    enter_open: (context, event) => {
-                        logger.info('FSM: entering open');
+                    invoke_state_callback: (context, event) => {
+                        console.log(`FSM: entering state: ${this.service.state.value}, via event: ${event.type}`);
+                        logger.info(`FSM: entering state: ${this.service.state.value}, via event: ${event.type}`);
+                        this.invoke_callbacks();
+                    },
+                    clear_timer: (context, event) => {
                         clearTimeout(this.door_timer);
-                        this.invoke_callbacks(this.service.state.value);
                     },
-                    enter_closing: (context, event) => {
-                        logger.info('FSM: entering closing');
+                    start_timer: (context, event) => {
                         data.settings.get('door_to').then(to => this.door_timer = setTimeout(() => this.service.send('TIMEOUT'), to));
-                        this.invoke_callbacks(this.service.state.value);
                     },
-                    enter_closed: (context, event) => {
-                        logger.info('FSM: entering closed');
-                        clearTimeout(this.door_timer);
-                        this.invoke_callbacks(this.service.state.value);
-                    },
-                    enter_opening: (context, event) => {
-                        logger.info('FSM: entering opening');
-                        data.settings.get('door_to').then(to => this.door_timer = setTimeout(() => this.service.send('TIMEOUT'), to));
-                        this.invoke_callbacks(this.service.state.value);
-                    },
-                    enter_error: (context, event) => {
-                        logger.info('FSM entering error');
-                        this.invoke_callbacks(this.service.state.value);
-                    }
                 }
             }
         );
@@ -209,7 +250,6 @@ class DoorFSM {
 
     event_start_opening = () => {
         this.service.send('START_OPENING');
-        console.log('test');
     }
 
     event_start_closing = () => {
@@ -224,12 +264,8 @@ class DoorFSM {
         this.service.send('IS_CLOSED');
     }
 
-    event_force_open = () => {
-        this.service.send('FORCE_OPEN');
-    }
-
-    event_force_close = () => {
-        this.service.send('FORCE_CLOSE');
+    event_is_stopped = () => {
+        this.service.send('IS_STOPPED');
     }
 
     get_current_state = () => this.service.state.value;
@@ -244,14 +280,15 @@ class DoorFSM {
         this.callbacks.push([cb, opaque]);
     }
 
-    invoke_callbacks = (state) => {
+    invoke_callbacks = () => {
+        const state = this.service.state.value;
         this.callbacks.forEach(cb => cb[0](state, cb[1]));
     }
 }
 
 
 export class Control {
-    door_state = doorEvents.OPEN;
+    door_state = doorState.OPEN;
 
     constructor(dont_use_gpio = false) {
         if (!Control.instance) {
@@ -264,43 +301,46 @@ export class Control {
     }
 
     init = io => {
+        this.machine.init();
         this.door.init();
         this.io = io;
-        this.machine.init();
         this.machine.register_callback(this.out_action_cb, null);
         data.settings.subscribe_on_update("update_cron_pattern", this.update_setting_cb, null);
         data.settings.get("update_cron_pattern")
             .then(pattern => {
                 this.update_job = cron.schedule(pattern, this.update_timings_and_delays);
             });
-        if (Math.floor(Math.random() * 2) === 0) {
-            console.log('start with door OPEN');
-            this.machine.event_force_open();
-        } else {
-            console.log('start with door CLOSED');
-            this.machine.event_force_close();
-        }
     }
 
     //Called each time the client is opened or refreshes screen => a new socket is created.
     use_socket(socket) {
-        socket.on("door", event => {
-            console.log("DOOR: received event: ", event);
-            if (event === doorEvents.GET_STATE) {
-                const current_state = this.machine.get_current_state();
-                this.io.emit("door", current_state);
-            } else {
-                logger.info(`Door is going to state: ${event}`);
-                if (event === doorEvents.OPENING) {
-                    this.machine.event_start_opening();
-                }
-                if (event === doorEvents.CLOSING) {
-                    this.machine.event_start_closing();
-                }
-            }
-        });
+        socket.on("door", event => this.react_on_frontend_event(event));
         this.test.use_socket(socket);
         this.update_timings_and_delays();
+    }
+
+    react_on_frontend_event = event => {
+        console.log("DOOR: received event: ", event);
+        const current_state = this.machine.get_current_state();
+        switch (event) {
+            case frontEndEvent.GET_STATE:
+                this.io.emit("door", current_state);
+                break;
+            case frontEndEvent.BTN_OPEN:
+                if (current_state === doorState.OPENING) {
+                    this.machine.event_is_stopped()
+                } else {
+                    this.machine.event_start_opening();
+                }
+                break;
+            case frontEndEvent.BTN_CLOSE:
+                if (current_state === doorState.CLOSING) {
+                    this.machine.event_is_stopped()
+                } else {
+                    this.machine.event_start_closing();
+                }
+                break;
+        }
     }
 
     update_setting_cb = (key, value, opaque) => {
