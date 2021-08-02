@@ -6,11 +6,12 @@ import App from './App.svelte';
 // V0.4: statemachine ok, created timers to open/close door at sunrise/sunset
 // V0.5: bugfix door open/close delay
 // V0.6: all implemented, assemble hardware
+// V0.7: bugfix: timestrings (use locale), clear timer when new timer is created, incremented debouncetime.
 
 const app = new App({
 	target: document.body,
 	props: {
-		version: 'V0.6'
+		version: 'V0.7'
 	}
 });
 

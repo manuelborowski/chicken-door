@@ -90,10 +90,10 @@ class DoorGpio {
         this.out_motor_open = new Gpio(27, 'out');
         this.out_motor_close = new Gpio(17, 'out');
         this.out_motor_enable = new Gpio(22, 'out');
-        this.in_door_opened = new Gpio(23, 'in', 'rising', {debounceTime: 20});
-        this.in_door_closed = new Gpio(24, 'in', 'rising', {debounceTime: 20});
-        this.in_open_door_btn = new Gpio(5, 'in', 'falling', {debounceTime: 20});
-        this.in_close_door_btn = new Gpio(6, 'in', 'falling', {debounceTime: 20});
+        this.in_door_opened = new Gpio(23, 'in', 'rising', {debounceTime: 50});
+        this.in_door_closed = new Gpio(24, 'in', 'rising', {debounceTime: 50});
+        this.in_open_door_btn = new Gpio(5, 'in', 'falling', {debounceTime: 50});
+        this.in_close_door_btn = new Gpio(6, 'in', 'falling', {debounceTime: 50});
     }
 
     init = () => {
@@ -239,8 +239,12 @@ class DoorFSM {
                     },
                     clear_timer: (context, event) => {
                         clearTimeout(this.door_timer);
+                        this.door_timer = null;
                     },
                     start_timer: (context, event) => {
+                        if (this.door_timer !== null) {
+                            clearTimeout(this.door_timer);
+                        }
                         data.settings.get('door_to').then(to => this.door_timer = setTimeout(() => this.service.send('TIMEOUT'), to));
                     },
                 }
@@ -366,10 +370,12 @@ export class Control {
             const decode_sun_timing = await get_sun_timing.json();
             const sunset = new Date(decode_sun_timing.results.sunset);
             const sunrise = new Date(decode_sun_timing.results.sunrise);
-            logger.info('sunset and sunrise', this.sunset, this.sunrise);
-            await data.settings.update('sun_rise', sunrise.toLocaleTimeString());
-            await data.settings.update('sun_set', sunset.toLocaleTimeString());
-            let ret = {status: true, data: {sunrise: sunrise.toLocaleString(), sunset: sunset.toLocaleString()}};
+            logger.info('sunset and sunrise', sunset, sunrise);
+            const sunrise_string = sunrise.toLocaleTimeString("nl-BE");
+            const sunset_string = sunset.toLocaleTimeString("nl-BE");
+            await data.settings.update('sun_rise', sunrise_string);
+            await data.settings.update('sun_set', sunset_string);
+            let ret = {status: true, data: {sunrise: sunrise_string, sunset: sunset_string}};
             await this.io.emit('sun-timing', ret);
             return true;
         } else {
@@ -398,8 +404,9 @@ export class Control {
         }
         let sun_rise_delay, sun_set_delay;
         if (test) {
+            let door_to = parseInt(await data.settings.get('door_to'));
             sun_rise_delay = 5000;
-            sun_set_delay = 10000;
+            sun_set_delay = sun_rise_delay + door_to;
         } else {
             sun_rise_delay = (rise_minutes - now_minutes) * 60 * 1000;
             sun_set_delay = (set_minutes - now_minutes) * 60 * 1000;
