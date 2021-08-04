@@ -8,6 +8,10 @@ import { Server } from 'socket.io';
 import logger from './logger.js';
 import minimist from 'minimist';
 
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express()
 app.use(cors())
 app.use(express.static('public'));
@@ -70,6 +74,11 @@ app.put('/api/settings/:key/:value', function (req, res, next) {
 
 app.put('/api/test', function (req, res, next) {
   format_response(control.test.execute(req.body), res);
+});
+
+app.get('/api/info/:key', function (req, res, next) {
+  const key = req.params.key;
+  format_response(data.info.get(key), res);
 });
 
 data.init()

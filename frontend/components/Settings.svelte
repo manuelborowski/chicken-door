@@ -13,10 +13,13 @@
     location_longitude: "",
     update_cron_pattern: "",
     door_to: "",
+    sun_rise_offset: "",
+    sun_set_offset: "",
   };
 
   let valid = false;
   let sun_timing = { rise: "", set: "" };
+  let temperature;
 
   const show_message = (text, type) => {
     const config = { text, type, position: "top-center" };
@@ -67,9 +70,16 @@
 
   onMount(async () => {
     const fetch_settings = await fetch("/api/settings?api-key=foo");
-    const data = await fetch_settings.json();
+    let data = await fetch_settings.json();
     if (data.status) {
       Object.assign(setting_fields, data.value);
+    } else {
+      alert(data.message);
+    }
+    const fetch_temperature = await fetch("/api/info/temperature?api-key=foo");
+    data = await fetch_temperature.json();
+    if (data.status) {
+      temperature = data.value;
     } else {
       alert(data.message);
     }
@@ -104,8 +114,16 @@
         <input type="text" id="update-cron-pattern" bind:value={setting_fields.update_cron_pattern} />
       </div>
       <div class="form-field">
-        <label for="door-to">Deur timeout (ms):</label>
+        <label for="door-to">Deur timeout (s):</label>
         <input type="text" id="door-to" bind:value={setting_fields.door_to} />
+      </div>
+      <div class="form-field">
+        <label for="sun-rise-offset">Zonsopgang aanpassing, kan negatief zijn (s):</label>
+        <input type="text" id="sun-rise-offset" bind:value={setting_fields.sun_rise_offset} />
+      </div>
+      <div class="form-field">
+        <label for="sun-set-offset">Zonsondergang aanpassing, kan negatief zijn (s):</label>
+        <input type="text" id="sun-set-offset" bind:value={setting_fields.sun_set_offset} />
       </div>
       <Button type="secondary">Save</Button>
     </form>
@@ -124,6 +142,10 @@
     </div>
     <Button on:click={() => execute_test("sun-timing")}>Get sunrise and sunset</Button>
     <Button on:click={() => execute_test("door-timeout")}>Test door open/close timeout</Button>
+    <div class="form-field">
+      <label for="temperature">Temperatuur (°C):</label>
+      <input type="text" id="temperature" bind:value={temperature} />
+    </div>
   </div>
 </Accordion>
 

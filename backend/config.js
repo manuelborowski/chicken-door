@@ -9,4 +9,6 @@ export const default_settings = {
   door_to: '20000', 
   sun_rise: "05.00",
   sun_set: "21.00",
+  sun_rise_offset: "0",
+  sun_set_offset: "0",
 }

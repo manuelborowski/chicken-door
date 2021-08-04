@@ -5,7 +5,6 @@ import cron from 'node-cron';
 import {createMachine, interpret} from 'xstate';
 import {Gpio} from 'onoff';
 import child_process from 'child_process';
-
 const doorState = {
     OPEN: "open",
     OPENING: "opening",
@@ -34,10 +33,11 @@ class Test {
         switch (data.topic) {
             case "sun-timing":
                 return this.control.update_timings_and_delays();
+                break;
             case "door-timeout":
                 return this.control.set_door_timeout(true);
+                break;
         }
-
     }
 }
 
@@ -52,10 +52,10 @@ class DoorTest {
         this.control.machine.register_callback(this.out_action_cb, null)
         if (Math.floor(Math.random() * 2) === 0) {
             console.log('start with door OPEN');
-            this.machine.event_is_open();
+            this.control.machine.event_is_open();
         } else {
             console.log('start with door CLOSED');
-            this.machine.event_is_closed();
+            this.control.machine.event_is_closed();
         }
     }
 
@@ -245,7 +245,7 @@ class DoorFSM {
                         if (this.door_timer !== null) {
                             clearTimeout(this.door_timer);
                         }
-                        data.settings.get('door_to').then(to => this.door_timer = setTimeout(() => this.service.send('TIMEOUT'), to));
+                        data.settings.get('door_to').then(to => this.door_timer = setTimeout(() => this.service.send('TIMEOUT'), parseInt(to) * 1000));
                     },
                 }
             }
@@ -394,6 +394,9 @@ export class Control {
         let set_minutes = parseInt(sun_split[0]) * 60 + parseInt(sun_split[1]);
         rise_minutes = (now_minutes >= rise_minutes) ? rise_minutes + 24 * 60 : rise_minutes;
         set_minutes = (now_minutes >= set_minutes) ? set_minutes + 24 * 60 : set_minutes;
+        const rise_offset = parseInt(await data.settings.get('sun_rise_offset'));
+        const set_offset = parseInt(await data.settings.get('sun_set_offset'));
+
         if (this.timer_door_open != null) {
             clearTimeout(this.timer_door_open);
             this.timer_door_open = null;
@@ -408,12 +411,12 @@ export class Control {
             sun_rise_delay = 5000;
             sun_set_delay = sun_rise_delay + door_to;
         } else {
-            sun_rise_delay = (rise_minutes - now_minutes) * 60 * 1000;
-            sun_set_delay = (set_minutes - now_minutes) * 60 * 1000;
+            sun_rise_delay = (rise_minutes - now_minutes) * 60 + rise_offset;
+            sun_set_delay = (set_minutes - now_minutes) * 60 + set_offset;
         }
-        this.timer_door_open = setTimeout(this.machine.event_start_opening, sun_rise_delay);
-        this.timer_door_close = setTimeout(this.machine.event_start_closing, sun_set_delay);
-        console.log("sunrise delay: ", sun_rise_delay, "sunset delay: ", sun_set_delay);
+        this.timer_door_open = setTimeout(this.machine.event_start_opening, sun_rise_delay * 1000);
+        this.timer_door_close = setTimeout(this.machine.event_start_closing, sun_set_delay * 1000);
+        console.log("sunrise delay (seconds): ", sun_rise_delay, "sunset delay (seconds): ", sun_set_delay);
     }
 
     out_action_cb = (state, opaque) => {

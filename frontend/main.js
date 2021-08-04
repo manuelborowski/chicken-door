@@ -7,11 +7,14 @@ import App from './App.svelte';
 // V0.5: bugfix door open/close delay
 // V0.6: all implemented, assemble hardware
 // V0.7: bugfix: timestrings (use locale), clear timer when new timer is created, incremented debouncetime.
+// V0.8: bugfixed issue with pm2 and __dirname
+// Added info endpoint to get processor-temperature
+// Added sunrise- and sunsetoffset
 
 const app = new App({
 	target: document.body,
 	props: {
-		version: 'V0.7'
+		version: 'V0.8'
 	}
 });
 
