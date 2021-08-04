@@ -10,11 +10,14 @@ import App from './App.svelte';
 // V0.8: bugfixed issue with pm2 and __dirname
 // Added info endpoint to get processor-temperature
 // Added sunrise- and sunsetoffset
+// V0.9: settings: added door-animation-duration to tweak the animated door with the real door.
+// statemachine update: by clicking on the animated door, it is possible to close, open or stop the door
+// animated door in website
 
 const app = new App({
 	target: document.body,
 	props: {
-		version: 'V0.8'
+		version: 'V0.9'
 	}
 });
 

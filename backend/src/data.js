@@ -14,8 +14,10 @@ class Settings {
   }
 
   async get(key) {
-    if (!(key in default_settings)) { throw new Error(`'${key}' is not a valid setting`); }
-    let setting = await this.setting_collection.findOne({ key })
+    if (!(key in default_settings)) {
+      throw new Error(`'${key}' is not a valid setting`);
+    }
+    let setting = await this.setting_collection.findOne({key})
     return setting.value;
   }
 

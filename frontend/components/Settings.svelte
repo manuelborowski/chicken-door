@@ -5,17 +5,12 @@
   import socket from "../scripts/socketio";
   import { config } from "../config.js";
   import { getNotificationsContext } from "svelte-notifications";
+  import { get_settings} from "../scripts/data";
   import { text } from "svelte/internal";
   const { addNotification } = getNotificationsContext();
 
-  let setting_fields = {
-    location_latitude: "",
-    location_longitude: "",
-    update_cron_pattern: "",
-    door_to: "",
-    sun_rise_offset: "",
-    sun_set_offset: "",
-  };
+
+  let setting_fields = {};
 
   let valid = false;
   let sun_timing = { rise: "", set: "" };
@@ -36,7 +31,7 @@
         alert(ret.message);
       }
     } else {
-      alert(`Error: ${res.status} ${res.statusText}`);
+      alert(`Error: ${response.status} ${response.statusText}`);
     }
     return false;
   };
@@ -48,7 +43,6 @@
       body: JSON.stringify(setting_fields),
     });
     const value = await decode_response(res);
-    console.log(value);
     if (value) {
       show_message("Instellingen zijn bewaard", "success");
     } else {
@@ -69,15 +63,9 @@
   };
 
   onMount(async () => {
-    const fetch_settings = await fetch("/api/settings?api-key=foo");
-    let data = await fetch_settings.json();
-    if (data.status) {
-      Object.assign(setting_fields, data.value);
-    } else {
-      alert(data.message);
-    }
+    get_settings().then(settings => setting_fields = settings);
     const fetch_temperature = await fetch("/api/info/temperature?api-key=foo");
-    data = await fetch_temperature.json();
+    let data = await fetch_temperature.json();
     if (data.status) {
       temperature = data.value;
     } else {
@@ -114,8 +102,12 @@
         <input type="text" id="update-cron-pattern" bind:value={setting_fields.update_cron_pattern} />
       </div>
       <div class="form-field">
-        <label for="door-to">Deur timeout (s):</label>
+        <label for="door-to">Deur: maximum verwachtte transitietijd (s):</label>
         <input type="text" id="door-to" bind:value={setting_fields.door_to} />
+      </div>
+      <div class="form-field">
+        <label for="anim-door-duration">Deur animatie duur (s):</label>
+        <input type="text" id="anim-door-duration" bind:value={setting_fields.anim_door_duration} />
       </div>
       <div class="form-field">
         <label for="sun-rise-offset">Zonsopgang aanpassing, kan negatief zijn (s):</label>
