@@ -1,0 +1,17 @@
+/node_modules/
+/public/build/
+/backend/node_modules/
+/backend/package-lock.json
+/frontend/README.md
+/frontend/node_modules/
+/frontend/package-lock.json
+/frontend/public/build/
+/log
+.gitignore
+/.vscode
+.DS_Store
+/.idea/chicken-door.iml
+/.idea/codeStyles/codeStyleConfig.xml
+/get_node_modules.js
+/.idea/modules.xml
+/.idea/vcs.xml

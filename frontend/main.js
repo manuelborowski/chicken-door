@@ -13,11 +13,12 @@ import App from './App.svelte';
 // V0.9: settings: added door-animation-duration to tweak the animated door with the real door.
 // statemachine update: by clicking on the animated door, it is possible to close, open or stop the door
 // animated door in website
+// V0.10: added .gitignore
 
 const app = new App({
 	target: document.body,
 	props: {
-		version: 'V0.9'
+		version: 'V0.10'
 	}
 });
 
