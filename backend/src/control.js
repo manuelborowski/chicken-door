@@ -163,7 +163,8 @@ class DoorGpio {
       case 'closing':
         this.close_door();
         break;
-      case 'stopped':
+      case 'stopped_opening':
+      case 'stopped_closing':
       case 'error':
         this.stop_door();
         break;

@@ -14,11 +14,12 @@ import App from './App.svelte';
 // statemachine update: by clicking on the animated door, it is possible to close, open or stop the door
 // animated door in website
 // V0.10: added .gitignore
+// V0.11: bugfix DoorGpio: state "stop" is replaced with "stop_opening" and "stop_closing"
 
 const app = new App({
 	target: document.body,
 	props: {
-		version: 'V0.10'
+		version: 'V0.11'
 	}
 });
 
