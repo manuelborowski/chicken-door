@@ -15,11 +15,12 @@ import App from './App.svelte';
 // animated door in website
 // V0.10: added .gitignore
 // V0.11: bugfix DoorGpio: state "stop" is replaced with "stop_opening" and "stop_closing"
+// V0.12: use API key to access site.  Added secret.js to hold api-key.  It is NOT in git.
 
 const app = new App({
 	target: document.body,
 	props: {
-		version: 'V0.11'
+		version: 'V0.12'
 	}
 });
 

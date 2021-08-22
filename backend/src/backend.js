@@ -7,6 +7,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import logger from './logger.js';
 import minimist from 'minimist';
+import {secret} from '../secret.js';
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -27,31 +28,33 @@ const control = new Control(dont_use_gpio);
 
 logger.info('Starting chicken door');
 
+//Limit the debug information in the browser
+Error.stackTraceLimit = 0
 function error(status, msg) {
   const err = new Error(msg);
   err.status = status;
   return err;
 }
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/index.html'));
-});
-
-app.use('/api', function (req, res, next) {
+app.use('/', function (req, res, next) {
   const key = req.query['api-key'];
-  if (!key) return next(error(400, 'api key required'));
-  if (!~apiKeys.indexOf(key)) return next(error(401, 'invalid api key'));
+  if (!key) return next(error(400, 'no access'));
+  if (!~apiKeys.indexOf(key)) return next(error(401, 'no access'));
   req.key = key;
   next();
 });
 
-const apiKeys = ['foo', 'bar', 'baz'];
+const apiKeys = [secret.api_key];
 
 const format_response = (promise, res) => {
   promise
     .then(value => res.json({ status: true, value }))
     .catch(e => res.json({ status: false, message: e.message }));
 }
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/public/chicken-door.html'));
+});
 
 app.get('/api/settings', function (req, res, next) {
   format_response(data.settings.get_all(), res);
@@ -82,7 +85,7 @@ app.get('/api/info/:key', function (req, res, next) {
 });
 
 data.init()
-  .then(res => server.listen(5000, () => logger.info('CORS-enabled web server listening on port 80')))
+  .then(res => server.listen(5000, () => logger.info('CORS-enabled web server listening on port 5000')))
   .then(res => {
     control.init(io);
     io.on('connect', socket => control.use_socket(socket));

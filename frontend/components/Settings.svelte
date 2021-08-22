@@ -3,7 +3,7 @@
   import Accordion from "../shared/Accordion.svelte";
   import { onMount } from "svelte";
   import socket from "../scripts/socketio";
-  import { config } from "../config.js";
+  import { secret } from "../secret.js";
   import { getNotificationsContext } from "svelte-notifications";
   import { get_settings} from "../scripts/data";
   import { text } from "svelte/internal";
@@ -37,7 +37,7 @@
   };
 
   const save_settings = async () => {
-    const res = await fetch(`/api/batch/settings?api-key=${config.api_key}`, {
+    const res = await fetch(`/api/batch/settings?api-key=${secret.api_key}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(setting_fields),
@@ -51,7 +51,7 @@
   };
 
   const execute_test = async (test) => {
-    const res = await fetch(`/api/test?api-key=${config.api_key}`, {
+    const res = await fetch(`/api/test?api-key=${secret.api_key}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -64,7 +64,7 @@
 
   onMount(async () => {
     get_settings().then(settings => setting_fields = settings);
-    const fetch_temperature = await fetch("/api/info/temperature?api-key=foo");
+    const fetch_temperature = await fetch(`/api/info/temperature?api-key=${secret.api_key}`);
     let data = await fetch_temperature.json();
     if (data.status) {
       temperature = data.value;
