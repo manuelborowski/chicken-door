@@ -18,11 +18,12 @@ import App from './App.svelte';
 // V0.12: use API key to access site.  Added secret.js to hold api-key.  It is NOT in git.
 // V0.13: changed some console.log to logger.info
 // V0.14: bugfix: added STOP event handler
+// V0.15: when in error state, on door_event, go to state opening
 
 const app = new App({
 	target: document.body,
 	props: {
-		version: 'V0.14'
+		version: 'V0.15'
 	}
 });
 

@@ -238,6 +238,7 @@ class DoorFSM {
           },
           error: {
             on: {
+              DOOR: 'opening',
               START_OPENING: 'opening',
               START_CLOSING: 'closing',
             },
