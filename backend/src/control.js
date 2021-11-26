@@ -287,6 +287,10 @@ class DoorFSM {
     this.service.send('IS_CLOSED');
   }
 
+  event_is_stopped = () => {
+    this.service.send('STOP');
+  }
+
   get_current_state = () => this.service.state.value;
 
   init = () => {
