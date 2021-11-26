@@ -54,26 +54,26 @@ class DoorTest {
   init = () => {
     this.control.machine.register_callback(this.out_action_cb, null)
     if (Math.floor(Math.random() * 2) === 0) {
-      console.log('start with door OPEN');
+      logger.info('start with door OPEN');
       this.control.machine.event_is_open();
     } else {
-      console.log('start with door CLOSED');
+      logger.info('start with door CLOSED');
       this.control.machine.event_is_closed();
     }
   }
 
   open_door = () => {
-    console.log('DOOR TEST: door is opening');
+    logger.info('DOOR TEST: door is opening');
     setTimeout(this.control.machine.event_is_open, this.door_delay);
   }
 
   close_door = () => {
-    console.log('DOOR TEST: door is closing');
+    logger.info('DOOR TEST: door is closing');
     setTimeout(this.control.machine.event_is_closed, this.door_delay);
   }
 
   out_action_cb = (state, opaque) => {
-    console.log(`DOOR TEST: statemachine goes to: ${state}`);
+    logger.info(`DOOR TEST: statemachine goes to: ${state}`);
     switch (state) {
       case 'opening':
         this.open_door();
@@ -105,14 +105,14 @@ class DoorGpio {
     child_process.spawn('gpio', ['-g', 'mode', '5', 'up']);
     child_process.spawn('gpio', ['-g', 'mode', '6', 'up']);
     this.in_door_opened.watch((err, value) => {
-      console.log('DOOR GPIO: door is open');
+      logger.info('DOOR GPIO: door is open');
       this.out_motor_close.writeSync(0);
       this.out_motor_open.writeSync(0);
       this.out_motor_enable.writeSync(0);
       this.control.machine.event_is_open();
     });
     this.in_door_closed.watch((err, value) => {
-      console.log('DOOR GPIO: door is closed');
+      logger.info('DOOR GPIO: door is closed');
       this.out_motor_close.writeSync(0);
       this.out_motor_open.writeSync(0);
       this.out_motor_enable.writeSync(0);
@@ -135,21 +135,21 @@ class DoorGpio {
   }
 
   open_door = () => {
-    console.log('DOOR GPIO: door is opening');
+    logger.info('DOOR GPIO: door is opening');
     this.out_motor_close.writeSync(0);
     this.out_motor_open.writeSync(1);
     this.out_motor_enable.writeSync(1);
   }
 
   close_door = () => {
-    console.log('DOOR GPIO: door is closing');
+    logger.info('DOOR GPIO: door is closing');
     this.out_motor_open.writeSync(0);
     this.out_motor_close.writeSync(1);
     this.out_motor_enable.writeSync(1);
   }
 
   stop_door = () => {
-    console.log('DOOR GPIO: door is stopped');
+    logger.info('DOOR GPIO: door is stopped');
     this.out_motor_open.writeSync(0);
     this.out_motor_close.writeSync(0);
     this.out_motor_enable.writeSync(0);
@@ -338,7 +338,7 @@ export class Control {
   }
 
   react_on_frontend_event = event => {
-    console.log("DOOR: received event: ", event);
+    logger.info(`DOOR: received event: ${event}`);
     const current_state = this.machine.get_current_state();
     switch (event) {
       case frontEndEvent.GET_STATE:
@@ -360,12 +360,12 @@ export class Control {
       this.update_job.stop()
       this.update_job = cron.schedule(value, this.update_timings_and_delays)
     } catch (e) {
-      console.log('erorr: ', e.message);
+      logger.info(`update_setting_callback erorr: ${e.message}`);
     }
   }
 
   update_timings_and_delays = () => {
-    console.log('update_function called on ', new Date());
+    logger.info(`update_function called on: ${new Date()}`);
     this.get_sun_timing();
     this.set_door_timeout();
   }
@@ -378,7 +378,7 @@ export class Control {
       const decode_sun_timing = await get_sun_timing.json();
       const sunset = new Date(decode_sun_timing.results.sunset);
       const sunrise = new Date(decode_sun_timing.results.sunrise);
-      logger.info('sunset and sunrise', sunset, sunrise);
+      logger.info(`sunset and sunrise, ${sunset}, ${sunrise}`);
       const sunrise_string = sunrise.toLocaleTimeString("nl-BE");
       const sunset_string = sunset.toLocaleTimeString("nl-BE");
       await data.settings.update('sun_rise', sunrise_string);
@@ -424,11 +424,11 @@ export class Control {
     }
     this.timer_door_open = setTimeout(this.machine.event_start_opening, sun_rise_delay * 1000);
     this.timer_door_close = setTimeout(this.machine.event_start_closing, sun_set_delay * 1000);
-    console.log("sunrise delay (seconds): ", sun_rise_delay, "sunset delay (seconds): ", sun_set_delay);
+    logger.info(`sunrise delay (seconds): ${sun_rise_delay}, sunset delay (seconds): ${sun_set_delay}`);
   }
 
   out_action_cb = (state, opaque) => {
-    console.log(`CONTROL: statemachine goes to: ${state}`);
+    logger.info(`CONTROL: statemachine goes to: ${state}`);
     this.io.emit("door", state);
   }
 }
