@@ -20,11 +20,12 @@ import App from './App.svelte';
 // V0.14: bugfix: added STOP event handler
 // V0.15: when in error state, on door_event, go to state opening
 // V0.16: bugifx glitch: door is detected closed while starting to open door.
+// V0.17: extended previous bugfix
 
 const app = new App({
 	target: document.body,
 	props: {
-		version: 'V0.16'
+		version: 'V0.17'
 	}
 });
 

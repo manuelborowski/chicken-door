@@ -105,21 +105,25 @@ class DoorGpio {
     child_process.spawn('gpio', ['-g', 'mode', '5', 'up']);
     child_process.spawn('gpio', ['-g', 'mode', '6', 'up']);
     this.in_door_opened.watch((err, value) => {
-      logger.info('DOOR GPIO: door is open');
-      this.out_motor_close.writeSync(0);
-      this.out_motor_open.writeSync(0);
-      this.out_motor_enable.writeSync(0);
-      this.control.machine.event_is_open();
+      if (this.out_motor_open.readSync() === 1) {
+        this.out_motor_close.writeSync(0);
+        this.out_motor_open.writeSync(0);
+        this.out_motor_enable.writeSync(0);
+        this.control.machine.event_is_open();
+        logger.info('DOOR GPIO: door is open');
+      } else {
+        logger.info('DOOR GPIO: in_door_opened: glitch (ignore): door is detected opened while closing or stopped')
+      }
     });
     this.in_door_closed.watch((err, value) => {
       if (this.out_motor_close.readSync() === 1) {
-        logger.info('DOOR GPIO: door is closed');
         this.out_motor_close.writeSync(0);
         this.out_motor_open.writeSync(0);
         this.out_motor_enable.writeSync(0);
         this.control.machine.event_is_closed();
+        logger.info('DOOR GPIO: door is closed');
       } else {
-        logger.info('DOOR GPIO: in_door_closed: glitch (ignore): door is detected closed while opening')
+        logger.info('DOOR GPIO: in_door_closed: glitch (ignore): door is detected closed while opening or stopped')
       }
     });
     this.in_open_door_btn.watch((err, value) => this.control.react_on_frontend_event(frontEndEvent.BTN_OPEN));
