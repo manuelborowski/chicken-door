@@ -112,11 +112,15 @@ class DoorGpio {
       this.control.machine.event_is_open();
     });
     this.in_door_closed.watch((err, value) => {
-      logger.info('DOOR GPIO: door is closed');
-      this.out_motor_close.writeSync(0);
-      this.out_motor_open.writeSync(0);
-      this.out_motor_enable.writeSync(0);
-      this.control.machine.event_is_closed();
+      if (this.out_motor_close.readSync() === 1) {
+        logger.info('DOOR GPIO: door is closed');
+        this.out_motor_close.writeSync(0);
+        this.out_motor_open.writeSync(0);
+        this.out_motor_enable.writeSync(0);
+        this.control.machine.event_is_closed();
+      } else {
+        logger.info('DOOR GPIO: in_door_closed: glitch (ignore): door is detected closed while opening')
+      }
     });
     this.in_open_door_btn.watch((err, value) => this.control.react_on_frontend_event(frontEndEvent.BTN_OPEN));
     this.in_close_door_btn.watch((err, value) => this.control.react_on_frontend_event(frontEndEvent.BTN_CLOSE));
